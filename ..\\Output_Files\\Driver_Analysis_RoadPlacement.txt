@@ -1,0 +1,6 @@
+Time;RoadPlaced;
+
+2.580;straight road;
+3.245;curve 90 right;
+3.911;curve 90 left;
+4.628;finish line;

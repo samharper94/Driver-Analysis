@@ -1,0 +1,168 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+//https://youtu.be/3RlKf7Q8CYM?list=PLbghT7MmckI6Tm0jUrhLZG8sEBI1hgCL8 thank you quill
+
+public class GroundClick : MonoBehaviour
+{
+    //public Material matRoad; //obselete
+    public Collider coll; //setup the ground collider from the GUI
+    public GameObject prefabRoad; //call pre-created road prefab
+    public GameObject prefabNode;
+
+    GameObject nodeStart;
+
+    void Update()
+    {
+        Vector3 roadStart;
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (ClickLocation(out roadStart))
+            {
+                nodeStart = Instantiate(prefabNode, roadStart, Quaternion.identity);
+                nodeStart.GetComponent<NodeClick>().ground = this;
+            }
+        }
+
+        if (Input.GetMouseButtonUp(0))
+        {
+            Vector3 roadEnd;
+            if(nodeStart != null && ClickLocation(out roadEnd)) //Make sure not dragging from skybox
+            {
+
+                GameObject nodeEnd = Instantiate(prefabNode, roadEnd, Quaternion.identity);
+                nodeEnd.GetComponent<NodeClick>().ground = this;
+                CreateRoad(nodeStart.transform.position, nodeEnd.transform.position);
+            }
+
+            nodeStart = null;
+        }
+    }
+
+
+    bool ClickLocation(out Vector3 point)
+    {
+        Ray ray = UnityEngine.Camera.main.ScreenPointToRay(Input.mousePosition); //raycast from the mouse
+        //Debug.Log(ray); //log mouse click position
+
+        RaycastHit hitInfo = new RaycastHit(); //store click point
+        if (Physics.Raycast(ray, out hitInfo, Mathf.Infinity))
+        {
+            if (hitInfo.collider == coll) //check if hitting ground collider
+            {
+                point = hitInfo.point;
+                return true;
+                //CreateRoad(hitInfo.point); //create road at click location, obselete
+            }
+        }
+
+        point = Vector3.zero;
+        return false;
+
+    }
+
+    public void SetNodeStart(GameObject n)
+    {
+        nodeStart = n;
+    }
+
+    public void SetNodeEnd(GameObject n)
+    {
+        CreateRoad(nodeStart.transform.position, n.transform.position);
+        nodeStart = null;
+    }
+
+    /*bool ClickLocationForced(out Vector3 point) //obselete
+    {
+        Ray ray = UnityEngine.Camera.main.ScreenPointToRay(Input.mousePosition); //raycast from the mouse
+        //Debug.Log(ray); //log mouse click position
+
+        coll = GetComponent<Collider>();  //coll is the ground collider
+        RaycastHit hitInfo = new RaycastHit(); //store click point
+        if (coll.Raycast(ray, out hitInfo, Mathf.Infinity))
+        {
+            point = hitInfo.point;
+            return true;
+            //CreateRoad(hitInfo.point); //create road at click location, obselete
+        }
+
+        point = Vector3.zero;
+        return false;
+
+    }*/ 
+
+
+    void CreateRoad(Vector3 roadStart, Vector3 roadEnd)
+    {
+        //GameObject road = new GameObject("road", typeof(MeshFilter), typeof(MeshRenderer)); //obselete
+        float width = 1; //mouse offset
+        float length = Vector3.Distance(roadStart, roadEnd); //length of road
+
+        if (length < 1)
+        {
+            return;  //if the road is less than 1 unit long don't create road
+        }
+
+        GameObject road = Instantiate(prefabRoad); //spawn a road
+        road.transform.position = roadStart + new Vector3(0f, 0.01f, 0f); //move the road above the ground to prevent z-fighting
+
+        //float angle = Vector3.Angle(Vector3.right, roadEnd-roadStart); //get the angle between start and end click, obselete
+        //Debug.Log(angle);  //monitor road angle
+
+        road.transform.rotation = Quaternion.FromToRotation(Vector3.right, roadEnd-roadStart); //gets rotation to get from start to end
+
+        Debug.Log(road.transform.rotation.eulerAngles);
+
+        //road.transform.rotation = Quaternion.Euler(0,angle,0);
+
+        
+
+        Vector3[] vertices =
+        {
+            new Vector3(0f,     0f,  -width/2), //square
+            new Vector3(length, 0f,  -width/2),
+            new Vector3(length, 0f,  width/2),
+            new Vector3(0f,     0f,  width/2)
+        };
+
+        int[] triangles =
+        {
+            1,0,2,  //triangle 1
+            2,0,3   //triangle 2
+        };
+
+        Vector2[] uv =
+        {
+            new Vector2(0,0),
+            new Vector2(length,0),  //assigns uv maps based on length variable, saves drawcalls
+            new Vector2(length,1),
+            new Vector2(0,1)
+        };
+
+        Vector3[] normals =
+        {
+            Vector3.up, //on a flat plane all normals are 90 degrees to the plane therefore straight up
+            Vector3.up,
+            Vector3.up,
+            Vector3.up
+        };
+
+        Mesh mesh = new Mesh();
+
+        mesh.vertices = vertices;
+        mesh.triangles = triangles;
+        mesh.uv = uv;
+        mesh.normals = normals;
+
+        MeshFilter mesh_filter = road.GetComponent<MeshFilter>();
+        mesh_filter.mesh = mesh;
+
+        //Vector2 texScale = new Vector2(5, 1);
+        //road.GetComponent<MeshRenderer>().material.mainTextureScale = texScale; //obselete, old texturing method, inefficient
+
+       /* MeshRenderer mesh_renderer = road.GetComponent<MeshRenderer>();
+        mesh_renderer.material = matRoad; // obselete now
+        mesh_renderer.shadowCastingMode = 0;*/
+    }
+}
